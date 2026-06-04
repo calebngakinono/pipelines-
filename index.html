@@ -2437,6 +2437,74 @@ git checkout -b feature/my_new_app-squads</code></pre>
           </li>
         </ol>
 
+        <div class="callout callout-info reveal mt-xl-section">
+          <svg class="callout-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+          <div>
+            We don't write SQL by hand, and we don't click around dashboard menus. Whenever you task Claude or Cursor with building a new backend feature, append this exact structural instruction to your prompt:
+          </div>
+        </div>
+
+        <div class="code-block reveal">
+          <div class="code-block-header">
+            <span class="code-lang">text</span>
+            <button class="copy-btn" type="button">Copy</button>
+          </div>
+          <pre><code class="language-text">"If this feature alters our database structure, do not make manual schema changes. Instead, use the Supabase CLI to create a new migration script file (npx supabase migration new &lt;name&gt;) and write the necessary SQL schema updates inside our project files."</code></pre>
+        </div>
+
+        <div class="reveal mt-xl-section">
+          <h4 class="subsection-title" style="font-size: 1.1rem; margin-bottom: 0.75rem;">What Claude Does in Your Terminal</h4>
+          <p class="prose-sub">Once given this instruction, Claude takes over the manual work:</p>
+          <ol class="step-list mt-content">
+            <li class="step-item reveal">
+              <div class="step-number">1</div>
+              <div class="step-content">
+                <div class="step-title">Generates a timestamped migration file</div>
+                <p>It spins up the Supabase CLI and creates a file locally — e.g. <code>supabase/migrations/20260603_add_squads.sql</code>.</p>
+              </div>
+            </li>
+            <li class="step-item reveal">
+              <div class="step-number">2</div>
+              <div class="step-content">
+                <div class="step-title">Writes pristine SQL inside that file</div>
+                <p>It writes structured SQL to build your tables, columns, or relationships — no clicking around the Supabase dashboard.</p>
+              </div>
+            </li>
+            <li class="step-item reveal">
+              <div class="step-number">3</div>
+              <div class="step-content">
+                <div class="step-title">Bundles it with your app code in one commit</div>
+                <p>Database code travels right alongside your TypeScript or React changes in the same Git commit — schema and app stay in sync.</p>
+              </div>
+            </li>
+          </ol>
+        </div>
+
+        <div class="reveal mt-xl-section">
+          <h4 class="subsection-title" style="font-size: 1.1rem; margin-bottom: 0.75rem;">The Cloud Pipeline Takes Care of the Rest</h4>
+          <p class="prose-sub">The second you push your code, the automated CI/CD Pipeline reads the exact migration files Claude created:</p>
+        </div>
+
+        <div class="code-block reveal">
+          <div class="code-block-header">
+            <span class="code-lang">text</span>
+            <button class="copy-btn" type="button">Copy</button>
+          </div>
+          <pre><code class="language-text">               ┌──► Merged into 'staging' ──► Auto Syncs Staging DB  ──► Deploys Staging App
+ [Claude SQL] ─┤
+               └──► Merged into 'main'    ──► Auto Syncs Production DB ──► Deploys Production App</code></pre>
+        </div>
+
+        <ul class="check-list reveal mt-content">
+          <li class="check-item good"><strong>When you merge to Staging:</strong> The pipeline reads Claude's file and injects the changes into the Staging database instantly.</li>
+          <li class="check-item good"><strong>When you merge to Production (Main):</strong> The exact same file is executed against your Production database before your updated code goes live on Railway.</li>
+        </ul>
+
         <!-- ─── PILLAR 2: RAILWAY ─── -->
         <div class="reveal mt-xl-section">
           <span class="section-tag yellow">Pillar 2</span>
@@ -2461,10 +2529,14 @@ git checkout -b feature/my_new_app-squads</code></pre>
           <li class="step-item reveal">
             <div class="step-number">2</div>
             <div class="step-content">
-              <div class="step-title">Connect Your Git Branches</div>
-              <ol style="padding-left: 1.25rem; margin-top: 0.75rem; display: flex; flex-direction: column; gap: 6px; font-size: 0.92rem; color: var(--text-muted); line-height: 1.65;">
-                <li>Click into the <code>staging</code> environment, select your service, and go to <strong>Settings</strong>. Under <strong>Service Constraints</strong>, set the Deployment Branch to <code>staging</code>.</li>
-                <li>Switch to the <code>production</code> environment, open the same Settings panel, and set its Deployment Branch to <code>main</code>.</li>
+              <div class="step-title">Connect Your Git Branch to the Staging Environment</div>
+              <ol style="padding-left: 1.25rem; margin-top: 0.75rem; display: flex; flex-direction: column; gap: 10px; font-size: 0.92rem; color: var(--text-muted); line-height: 1.65;">
+                <li>Look at the top left of your Railway canvas and make sure you have switched the dropdown from <code>production</code> to your newly created <code>staging</code> environment.</li>
+                <li>Click directly on your application's service block on the canvas to open its side panel.</li>
+                <li>In that side panel, look at the tabs across the top (usually <strong>Deployments</strong>, <strong>Variables</strong>, <strong>Metrics</strong>, <strong>Settings</strong>). Click on <strong>Settings</strong>.</li>
+                <li>Scroll down slightly until you see the <strong>Source</strong> section.</li>
+                <li>You will see your connected GitHub repository name, and directly below it a <strong>Branch</strong> setting — it defaults to copying whatever your production instance was using, like <code>main</code> or <code>master</code>.</li>
+                <li>Click that dropdown, type or select <code>staging</code>, and save it.</li>
               </ol>
             </div>
           </li>
@@ -2566,6 +2638,11 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # 1. AUTOMATIC DATABASE SYNC: Push migrations made by Claude to Staging DB
+      - name: Sync Staging Database Schema
+        run: npx supabase db push --db-url "${{ secrets.STAGING_DATABASE_URL }}"
+
+      # 2. APP DEPLOYMENT: Ship frontend code to Railway Staging
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
@@ -2582,6 +2659,11 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # 1. AUTOMATIC DATABASE SYNC: Push migrations made by Claude to Production DB
+      - name: Sync Production Database Schema
+        run: npx supabase db push --db-url "${{ secrets.PROD_DATABASE_URL }}"
+
+      # 2. APP DEPLOYMENT: Ship frontend code to Railway Production
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
