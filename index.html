@@ -2401,93 +2401,146 @@ git checkout -b feature/my_new_app-squads</code></pre>
           <h3 class="subsection-title">Separating Your Databases (Supabase)</h3>
         </div>
         <p class="reveal prose-sub">
-          You cannot share a single Supabase project across environments. Create two completely separate projects on your Supabase dashboard — one per environment.
+          Before your first line of feature code, decide which database situation you are in. Pick the scenario that matches and follow it exactly — both paths end at the same destination: schema in code, two isolated environments, and Claude writing every migration.
         </p>
-        <div class="code-block reveal">
-          <div class="code-block-header">
-            <span class="code-lang">text</span>
-            <button class="copy-btn" type="button">Copy</button>
-          </div>
-          <pre><code class="language-text">[ Supabase Project A: my_new_app-staging ] ──► Serves Staging App
-[ Supabase Project B: my_new_app-prod ]    ──► Serves Production App</code></pre>
+
+        <!-- ── Scenario 1 ── -->
+        <div class="reveal mt-xl-section">
+          <span class="section-tag green">Scenario 1</span>
+          <h4 class="subsection-title" style="font-size: 1.1rem; margin-bottom: 0.5rem;">Starting a Brand-New Project (Two Fresh Databases)</h4>
         </div>
 
         <ol class="step-list">
           <li class="step-item reveal">
             <div class="step-number">1</div>
             <div class="step-content">
-              <div class="step-title">Create two projects on your Supabase Dashboard</div>
+              <div class="step-title">Set up the spaces</div>
+              <p>Create two separate, completely blank projects in your Supabase dashboard — one for staging, one for production. Leave them entirely empty. Do not create any tables yet.</p>
               <ul class="check-list mt-content-sm">
-                <li class="check-item good"><code>my_new_app-staging</code></li>
-                <li class="check-item good"><code>my_new_app-prod</code></li>
+                <li class="check-item good"><code>my_app-staging</code> — blank Supabase project</li>
+                <li class="check-item good"><code>my_app-prod</code> — blank Supabase project</li>
               </ul>
             </div>
           </li>
           <li class="step-item reveal">
             <div class="step-number">2</div>
             <div class="step-content">
-              <div class="step-title">Collect credentials from each project</div>
-              <p>For <strong>each</strong> project, go to <strong>Project Settings</strong> &gt; <strong>API</strong> and gather these three values:</p>
-              <ul class="check-list mt-content-sm">
-                <li class="check-item good"><code>SUPABASE_URL</code></li>
-                <li class="check-item good"><code>SUPABASE_ANON_KEY</code></li>
-                <li class="check-item good"><strong>Database Connection String</strong> (under Settings &gt; Database)</li>
-              </ul>
+              <div class="step-title">The Master Initialization Prompt for Claude</div>
+              <p>Open a fresh chat with Claude Code or Cursor at your project root. Paste this prompt exactly — it forces Claude to write your migration rules into <code>CLAUDE.md</code> with a structured format, initialize the Supabase project locally, and lock the baseline into version history before a single feature gets built.</p>
+              <div class="ai-prompt-block mt-content" role="figure" aria-label="Master initialization prompt for Claude">
+                <div class="ai-prompt-header">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                  <span>Prompt to AI Agent</span>
+                </div>
+                <div class="ai-prompt-text">
+                  <p>Create a <code>CLAUDE.md</code> file at the project root. Add a <strong>DATABASE MIGRATION RULES</strong> section with these exact rules — no exceptions:</p>
+                  <ul>
+                    <li>ALL schema changes MUST use: <code>npx supabase migration new &lt;descriptive_name&gt;</code></li>
+                    <li>Migration names must describe the change — e.g. <code>create_users_table</code>, <code>add_stripe_id_to_profiles</code> — never generic names like <code>schema_update</code> or <code>fix</code></li>
+                    <li>NEVER edit the Supabase dashboard directly — all schema lives in code</li>
+                    <li>NEVER edit an existing migration file — always create a new incremental one</li>
+                    <li>Every migration must be committed in the same Git commit as the code that depends on it</li>
+                  </ul>
+                  <p>After writing <code>CLAUDE.md</code>, run <code>npx supabase init</code>, then <code>npx supabase migration new baseline_schema</code>. Leave the baseline file empty — it anchors our version history. Commit both files together.</p>
+                </div>
+              </div>
             </div>
           </li>
         </ol>
 
-        <div class="callout callout-info reveal mt-xl-section">
-          <svg class="callout-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="16" x2="12" y2="12" />
-            <line x1="12" y1="8" x2="12.01" y2="8" />
-          </svg>
-          <div>
-            We don't write SQL by hand, and we don't click around dashboard menus. Whenever you task Claude or Cursor with building a new backend feature, append this exact structural instruction to your prompt:
-          </div>
-        </div>
-
-        <div class="code-block reveal">
-          <div class="code-block-header">
-            <span class="code-lang">text</span>
-            <button class="copy-btn" type="button">Copy</button>
-          </div>
-          <pre><code class="language-text">"If this feature alters our database structure, do not make manual schema changes. Instead, use the Supabase CLI to create a new migration script file (npx supabase migration new &lt;name&gt;) and write the necessary SQL schema updates inside our project files."</code></pre>
-        </div>
-
+        <!-- ── Scenario 2 ── -->
         <div class="reveal mt-xl-section">
-          <h4 class="subsection-title" style="font-size: 1.1rem; margin-bottom: 0.75rem;">What Claude Does in Your Terminal</h4>
-          <p class="prose-sub">Once given this instruction, Claude takes over the manual work:</p>
-          <ol class="step-list mt-content">
-            <li class="step-item reveal">
-              <div class="step-number">1</div>
-              <div class="step-content">
-                <div class="step-title">Generates a timestamped migration file</div>
-                <p>It spins up the Supabase CLI and creates a file locally — e.g. <code>supabase/migrations/20260603_add_squads.sql</code>.</p>
-              </div>
-            </li>
-            <li class="step-item reveal">
-              <div class="step-number">2</div>
-              <div class="step-content">
-                <div class="step-title">Writes pristine SQL inside that file</div>
-                <p>It writes structured SQL to build your tables, columns, or relationships — no clicking around the Supabase dashboard.</p>
-              </div>
-            </li>
-            <li class="step-item reveal">
-              <div class="step-number">3</div>
-              <div class="step-content">
-                <div class="step-title">Bundles it with your app code in one commit</div>
-                <p>Database code travels right alongside your TypeScript or React changes in the same Git commit — schema and app stay in sync.</p>
-              </div>
-            </li>
-          </ol>
+          <span class="section-tag yellow">Scenario 2</span>
+          <h4 class="subsection-title" style="font-size: 1.1rem; margin-bottom: 0.5rem;">Migrating an Existing Project (One Active DB ──► Adding a Twin)</h4>
         </div>
 
+        <ol class="step-list">
+          <li class="step-item reveal">
+            <div class="step-number">1</div>
+            <div class="step-content">
+              <div class="step-title">Set up the spaces</div>
+              <p>Your current active database becomes <strong>Staging</strong>. Spin up a brand-new, completely empty Supabase project for <strong>Production</strong>. Then wire your staging connection string into GitHub secrets so the CLI can reach it.</p>
+              <ul class="check-list mt-content-sm">
+                <li class="check-item good">Existing database → now your <strong>Staging</strong> environment</li>
+                <li class="check-item good">New blank Supabase project → your <strong>Production</strong> environment</li>
+                <li class="check-item good">Add <code>STAGING_DATABASE_URL</code> to GitHub → Settings → Secrets and Variables → Actions → Repository Secrets</li>
+              </ul>
+            </div>
+          </li>
+          <li class="step-item reveal">
+            <div class="step-number">2</div>
+            <div class="step-content">
+              <div class="step-title">The Master Transition Prompt for Claude</div>
+              <p>Open your chat with Claude Code or Cursor. This prompt first updates <code>CLAUDE.md</code> with the multi-environment rules, then pulls your entire existing live schema into a baseline migration file — so every future migration starts from a documented, version-controlled state.</p>
+              <div class="ai-prompt-block mt-content" role="figure" aria-label="Master transition prompt for Claude">
+                <div class="ai-prompt-header">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                  <span>Prompt to AI Agent</span>
+                </div>
+                <div class="ai-prompt-text">
+                  <p>Update our <code>CLAUDE.md</code> file — create it if it doesn't exist. Add a <strong>DATABASE MIGRATION RULES</strong> section with these exact rules — no exceptions:</p>
+                  <ul>
+                    <li>ALL schema changes MUST use: <code>npx supabase migration new &lt;descriptive_name&gt;</code></li>
+                    <li>Migration names must describe the actual change — e.g. <code>create_users_table</code>, <code>add_avatar_url_to_profiles</code> — never generic names</li>
+                    <li>NEVER edit the Supabase dashboard directly — all schema lives in code</li>
+                    <li>NEVER edit an existing migration file — only create new incremental ones</li>
+                    <li>Every migration must be committed alongside the app code that depends on it</li>
+                    <li>To apply migrations to staging locally: <code>npx supabase db push --db-url $STAGING_DATABASE_URL</code></li>
+                  </ul>
+                  <p>After updating <code>CLAUDE.md</code>, snapshot our existing staging schema into version control:</p>
+                  <p><code>npx supabase db pull --db-url $STAGING_DATABASE_URL</code></p>
+                  <p>This writes our entire current schema into <code>supabase/migrations/</code> as our locked baseline. Commit <code>CLAUDE.md</code> and this baseline migration together immediately.</p>
+                </div>
+              </div>
+            </div>
+          </li>
+        </ol>
+
+        <!-- ── Secrets Table ── -->
+        <div class="reveal mt-xl-section">
+          <h4 class="subsection-title" style="font-size: 1.1rem; margin-bottom: 0.75rem;">The 4 Secrets to Add to GitHub</h4>
+          <p class="prose-sub">While Claude handles writing the rules and generating the SQL files, drop these four keys into your GitHub repository under <strong>Settings → Secrets and Variables → Actions → Repository Secrets</strong>:</p>
+        </div>
+
+        <div class="table-wrapper reveal mt-content">
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th>Secret Name</th>
+                <th>What to Copy &amp; Paste Inside</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>STAGING_DATABASE_URL</code></td>
+                <td>Connection string from your Staging Supabase project (Settings → Database). Include your password.</td>
+              </tr>
+              <tr>
+                <td><code>PROD_DATABASE_URL</code></td>
+                <td>Connection string from your Production Supabase project (Settings → Database). Include your password.</td>
+              </tr>
+              <tr>
+                <td><code>RAILWAY_STAGING_TOKEN</code></td>
+                <td>Scoped project token generated inside your Railway Staging environment settings.</td>
+              </tr>
+              <tr>
+                <td><code>RAILWAY_PROD_TOKEN</code></td>
+                <td>Scoped project token generated inside your Railway Production environment settings.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ── Pipeline diagram ── -->
         <div class="reveal mt-xl-section">
           <h4 class="subsection-title" style="font-size: 1.1rem; margin-bottom: 0.75rem;">The Cloud Pipeline Takes Care of the Rest</h4>
-          <p class="prose-sub">The second you push your code, the automated CI/CD Pipeline reads the exact migration files Claude created:</p>
+          <p class="prose-sub">The moment you push, the CI/CD pipeline reads the exact migration files Claude created and applies them in order:</p>
         </div>
 
         <div class="code-block reveal">
@@ -2501,8 +2554,8 @@ git checkout -b feature/my_new_app-squads</code></pre>
         </div>
 
         <ul class="check-list reveal mt-content">
-          <li class="check-item good"><strong>When you merge to Staging:</strong> The pipeline reads Claude's file and injects the changes into the Staging database instantly.</li>
-          <li class="check-item good"><strong>When you merge to Production (Main):</strong> The exact same file is executed against your Production database before your updated code goes live on Railway.</li>
+          <li class="check-item good"><strong>Merge to Staging:</strong> Pipeline reads Claude's migration file and injects the changes into the Staging database instantly.</li>
+          <li class="check-item good"><strong>Merge to Production (Main):</strong> That exact same file runs against your Production database before any updated code goes live on Railway.</li>
         </ul>
 
         <!-- ─── PILLAR 2: RAILWAY ─── -->
@@ -2674,48 +2727,145 @@ jobs:
         </div>
 
         <!-- ─── PROMOTION FLOW ─── -->
-        <h3 class="subsection-title reveal mt-xl-section">How Code Flows Through This System</h3>
-        <p class="reveal prose-sub">Once all three pillars are active, every code change follows a strict, predictable promotion path from your local machine to production.</p>
+        <h3 class="subsection-title reveal mt-xl-section">The Day-to-Day Workflow</h3>
+        <p class="reveal prose-sub">Once your architecture is locked in, the cycle becomes a smooth, automated loop. You stop worrying about breaking the database and focus entirely on features. Here is exactly how a new idea goes from your head to production.</p>
 
-        <div class="code-block reveal">
-          <div class="code-block-header">
-            <span class="code-lang">text</span>
-            <button class="copy-btn" type="button">Copy</button>
-          </div>
-          <pre><code class="language-text">[feature/auth] ──► Pull Request ──► [dev] (Auto Lint &amp; Type-Check)
-                                      │
-               ┌──────────────────────┘
-               ▼
- [PR to staging] ──► Merged ──► Railway Staging Deploy (Hits Staging Supabase DB)
-                                  │
-          ┌───────────────────────┘
-          ▼
- [PR to main]    ──► Merged ──► Railway Production Deploy (Hits Prod Supabase DB)</code></pre>
-        </div>
-
-        <ol class="step-list">
+        <ol class="step-list mt-content">
           <li class="step-item reveal">
             <div class="step-number">1</div>
             <div class="step-content">
-              <div class="step-title">Write code on a feature branch, open a PR into <code>dev</code></div>
-              <p>The CI pipeline runs the linter and type-checker automatically. Fix any failures on your branch before merging.</p>
+              <div class="step-title">The Starting Line: Branching &amp; Context</div>
+              <p>Every new task begins with a clean slate. You never work directly on <code>dev</code> — you work in a bubble.</p>
+              <div class="code-block mt-content">
+                <div class="code-block-header">
+                  <span class="code-lang">bash</span>
+                  <button class="copy-btn" type="button">Copy</button>
+                </div>
+                <pre><code class="language-bash">git checkout -b feature/user-streaks</code></pre>
+              </div>
+              <div class="ai-prompt-block mt-content" role="figure" aria-label="Starting prompt for Claude">
+                <div class="ai-prompt-header">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                  <span>Prompt to AI Agent</span>
+                </div>
+                <div class="ai-prompt-text">
+                  <p>Check <code>CLAUDE.md</code> for our current rules. We are starting the 'User Streaks' feature. Plan the steps and let's get started.</p>
+                </div>
+              </div>
+              <p style="margin-top: 0.75rem; font-size: 0.9rem; color: var(--text-muted);">Claude reads <code>CLAUDE.md</code>, sees the Database Migration Rules, and knows the first step must be a migration file — not a dashboard click.</p>
             </div>
           </li>
+
           <li class="step-item reveal">
             <div class="step-number">2</div>
             <div class="step-content">
-              <div class="step-title">Open a PR from <code>dev</code> into <code>staging</code> when ready to test live</div>
-              <p>Merging fires the staging pipeline. Railway deploys to the staging environment and connects directly to your Staging Supabase instance. Test your feature on the live staging URL.</p>
+              <div class="step-title">The Build: AI-Driven Migrations</div>
+              <p>Claude builds the feature. Because the rules are in <code>CLAUDE.md</code>, it handles the CLI commands automatically.</p>
+              <ul class="check-list mt-content-sm">
+                <li class="check-item good"><strong>Migration:</strong> Claude runs <code>npx supabase migration new add_streaks_table</code> and writes the SQL inside that file.</li>
+                <li class="check-item good"><strong>Code:</strong> Claude builds the frontend and backend logic on your branch.</li>
+                <li class="check-item good"><strong>Local sync:</strong> Run <code>npx supabase db reset</code> locally to confirm the migration works on your machine before pushing.</li>
+              </ul>
             </div>
           </li>
+
           <li class="step-item reveal">
             <div class="step-number">3</div>
             <div class="step-content">
-              <div class="step-title">Open a final PR from <code>staging</code> into <code>main</code> once verified</div>
-              <p>Merging fires the production pipeline. Railway deploys the verified build to the production environment, connected exclusively to your Production Supabase instance. No staging data ever reaches this environment.</p>
+              <div class="step-title">The Auto-Merge: From Branch to <code>dev</code></div>
+              <p>You push your branch. You don't navigate GitHub to merge — automation handles it.</p>
+              <div class="code-block mt-content">
+                <div class="code-block-header">
+                  <span class="code-lang">bash</span>
+                  <button class="copy-btn" type="button">Copy</button>
+                </div>
+                <pre><code class="language-bash">git add .
+git commit -m "feat: implemented user streak logic and schema"
+git push origin feature/user-streaks</code></pre>
+              </div>
+              <p style="margin-top: 0.75rem; font-size: 0.9rem; color: var(--text-muted);">A GitHub Action triggers on the <code>feature/*</code> push, runs a quick check, and automatically merges the code into <code>dev</code>.</p>
+            </div>
+          </li>
+
+          <li class="step-item reveal">
+            <div class="step-number">4</div>
+            <div class="step-content">
+              <div class="step-title">The Staging Deployment: Automated Testing</div>
+              <p>With code in <code>dev</code>, the CI pipeline takes over and promotes it to Staging.</p>
+              <ul class="check-list mt-content-sm">
+                <li class="check-item good"><strong>CI trigger:</strong> The push to <code>dev</code> fires <code>ci.yml</code>.</li>
+                <li class="check-item good"><strong>Database migration:</strong> The pipeline grabs <code>STAGING_DATABASE_URL</code> and runs <code>supabase db push</code> — your Staging Supabase gets the new Streaks table instantly.</li>
+                <li class="check-item good"><strong>App deployment:</strong> <code>RAILWAY_STAGING_TOKEN</code> pushes the new code to your Railway Staging environment.</li>
+                <li class="check-item good"><strong>Result:</strong> Your team opens the Staging URL and tests the live feature.</li>
+              </ul>
+            </div>
+          </li>
+
+          <li class="step-item reveal">
+            <div class="step-number">5</div>
+            <div class="step-content">
+              <div class="step-title">The Final Step: Manual Promotion to Production</div>
+              <p>Production never updates on a <code>dev</code> push. You promote only when the team gives the thumbs up.</p>
+              <ul class="check-list mt-content-sm">
+                <li class="check-item good">Open a Pull Request from <code>dev</code> ──► <code>main</code> on GitHub.</li>
+                <li class="check-item good">Click <strong>Merge Pull Request</strong>.</li>
+                <li class="check-item good"><code>ci.yml</code> detects the push to <code>main</code>, grabs <code>PROD_DATABASE_URL</code>, and runs the migration files against your Production Supabase.</li>
+                <li class="check-item good"><code>RAILWAY_PROD_TOKEN</code> deploys the final build to your live Railway app.</li>
+              </ul>
             </div>
           </li>
         </ol>
+
+        <div class="reveal mt-xl-section">
+          <h4 class="subsection-title" style="font-size: 1.1rem; margin-bottom: 0.75rem;">The Workflow Map</h4>
+        </div>
+        <div class="table-wrapper reveal mt-content">
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th>Phase</th>
+                <th>Action</th>
+                <th>Who / What</th>
+                <th>Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Start</strong></td>
+                <td><code>git checkout -b</code></td>
+                <td>You</td>
+                <td>Isolated environment</td>
+              </tr>
+              <tr>
+                <td><strong>Build</strong></td>
+                <td>Prompt Claude</td>
+                <td>Claude</td>
+                <td>AI writes code + migration SQL</td>
+              </tr>
+              <tr>
+                <td><strong>Push</strong></td>
+                <td><code>git push</code></td>
+                <td>You</td>
+                <td>Triggers auto-merge to <code>dev</code></td>
+              </tr>
+              <tr>
+                <td><strong>Test</strong></td>
+                <td>CI Pipeline</td>
+                <td>GitHub Actions</td>
+                <td>Code &amp; DB schema land in Staging</td>
+              </tr>
+              <tr>
+                <td><strong>Live</strong></td>
+                <td>Merge <code>dev</code> → <code>main</code></td>
+                <td>You</td>
+                <td>Production updated safely</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   </main>
